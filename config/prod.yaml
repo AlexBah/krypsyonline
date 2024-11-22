@@ -1,0 +1,4 @@
+env: "prod"
+certfile: "/etc/letsencrypt/live/krypsy.online/fullchain.pem"
+keyfile: "/etc/letsencrypt/live/krypsy.online/privkey.pem"
+timeout: 5s

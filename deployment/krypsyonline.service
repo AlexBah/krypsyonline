@@ -1,0 +1,14 @@
+[Unit]
+Description=krypsyonline
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/mnt/disk1/krypsyonline
+ExecStart=/mnt/disk1/krypsyonline/krypsyonline --config=/mnt/disk1/krypsyonline/config/prod.yaml
+Restart=always
+RestartSec=4
+StandardOutput=inherit
+
+[Install]
+WantedBy=multi-user.target 

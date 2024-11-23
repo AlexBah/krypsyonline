@@ -2,10 +2,12 @@ package main
 
 import (
 	"log/slog"
-	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"main.go/internal/config"
+	"main.go/internal/handler"
 )
 
 const (
@@ -19,44 +21,16 @@ func main() {
 	log := setupLogger(cfg.Env)
 	log.Info("starting application")
 
-	err := listenAndServe(cfg.CertFile, cfg.KeyFile)
-	if err != nil {
-		panic(err)
-	}
-}
+	shutdownCh := make(chan struct{})
 
-// listens to a port, choosing between a secure or unsecured connection
-func listenAndServe(certFile, keyFile string) error {
-	var err error
-	if (certFile == "not exist") || (keyFile == "not exist") {
-		listenSecondaryPort(":443")
-		err = http.ListenAndServe(":80", http.FileServer(http.Dir("./web")))
-	} else {
-		listenSecondaryPort(":80")
-		err = http.ListenAndServeTLS(":443", certFile, keyFile, http.FileServer(http.Dir("./web")))
-	}
-	return err
-}
+	handler.ListenPortal(cfg.CertFile, cfg.KeyFile, shutdownCh, log)
 
-// listen secondary port and redirect request to primary port
-func listenSecondaryPort(port string) {
-	go func() {
-		err := http.ListenAndServe(port, http.HandlerFunc(redirectHTTPports))
-		if err != nil {
-			panic(err)
-		}
-	}()
-}
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	<-c
+	close(shutdownCh)
+	log.Info("All servers stopped gracefully")
 
-// redirect HTTP and HTTPs
-func redirectHTTPports(w http.ResponseWriter, r *http.Request) {
-	target := r.Host + r.URL.Path
-	if r.TLS != nil {
-		target = "http://" + target
-	} else {
-		target = "https://" + target
-	}
-	http.Redirect(w, r, target, http.StatusMovedPermanently)
 }
 
 // setup level of logger info

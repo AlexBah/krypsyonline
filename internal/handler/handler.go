@@ -65,6 +65,8 @@ func stopListen(srv *http.Server, shutdownCh <-chan struct{}, log *slog.Logger) 
 		log.Info(fmt.Sprintf("Shutting down server on port %s", srv.Addr))
 		if err := srv.Shutdown(ctx); err != nil {
 			log.Error("Server shutdown failed on port", srv.Addr, err)
+		} else {
+			log.Info(fmt.Sprintf("Server shutdown gracefully on port %s ", srv.Addr))
 		}
 	}()
 }

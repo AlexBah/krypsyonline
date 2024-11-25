@@ -26,14 +26,14 @@ func listenPrimaryPort(port, certFile, keyFile string, shutdownCh <-chan struct{
 	if port == ":80" {
 		go func() {
 			if err := srv.ListenAndServe(); err != nil {
-				panic(err)
+				log.Error("Port", srv.Addr, err)
 			}
 		}()
 	}
 	if port == ":443" {
 		go func() {
 			if err := srv.ListenAndServeTLS(certFile, keyFile); err != nil {
-				panic(err)
+				log.Error("Port", srv.Addr, err)
 			}
 		}()
 	}
@@ -48,7 +48,7 @@ func listenSecondaryPort(port string, shutdownCh <-chan struct{}, log *slog.Logg
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
-			panic(err)
+			log.Error("Port", srv.Addr, err)
 		}
 	}()
 
@@ -60,11 +60,11 @@ func stopListen(srv *http.Server, shutdownCh <-chan struct{}, log *slog.Logger) 
 	go func() {
 		<-shutdownCh
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		log.Info(fmt.Sprintf("Shutting down server on %s", srv.Addr))
+		log.Info(fmt.Sprintf("Shutting down server on port %s", srv.Addr))
 		if err := srv.Shutdown(ctx); err != nil {
-			log.Info(fmt.Sprintf("Server on %s shutdown failed: %v", srv.Addr, err))
+			log.Error("Server shutdown failed on port", srv.Addr, err)
 		}
 	}()
 }

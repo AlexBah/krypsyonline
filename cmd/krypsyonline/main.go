@@ -3,6 +3,7 @@ package main
 import (
 	"log/slog"
 	"os"
+	"time"
 
 	"main.go/internal/config"
 	"main.go/internal/handler"
@@ -23,6 +24,7 @@ func main() {
 	handler.ListenPortal(cfg.CertFile, cfg.KeyFile, shutdownCh, log)
 	handler.ListenStopSig()
 	close(shutdownCh)
+	time.Sleep(3 * time.Second)
 
 }
 

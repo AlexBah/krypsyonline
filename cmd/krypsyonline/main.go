@@ -3,8 +3,6 @@ package main
 import (
 	"log/slog"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"main.go/internal/config"
 	"main.go/internal/handler"
@@ -22,14 +20,9 @@ func main() {
 	log.Info("starting application")
 
 	shutdownCh := make(chan struct{})
-
 	handler.ListenPortal(cfg.CertFile, cfg.KeyFile, shutdownCh, log)
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
-	<-c
+	handler.ListenStopSig()
 	close(shutdownCh)
-	log.Info("All servers stopped gracefully")
 
 }
 

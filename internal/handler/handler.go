@@ -21,6 +21,7 @@ func ListenPortal(certFile, keyFile string, shutdownCh <-chan struct{}, log *slo
 // listen primary port and return fileserver
 func listenPrimaryPort(port, certFile, keyFile string, shutdownCh <-chan struct{}, log *slog.Logger) {
 	srv := &http.Server{Addr: port, Handler: http.FileServer(http.Dir("./web"))}
+	log.Info(fmt.Sprintf("Starting listen on port %s", srv.Addr))
 
 	if port == ":80" {
 		go func() {
@@ -37,19 +38,13 @@ func listenPrimaryPort(port, certFile, keyFile string, shutdownCh <-chan struct{
 		}()
 	}
 
-	<-shutdownCh
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	log.Info(fmt.Sprintf("Shutting down server on %s", port))
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Info(fmt.Sprintf("Server on %s shutdown failed:%v", port, err))
-	}
+	stopListen(srv, shutdownCh, log)
 }
 
-// listen secondary port and redirect request to primary port
+// listen secondary port and redirect request to HTTPs
 func listenSecondaryPort(port string, shutdownCh <-chan struct{}, log *slog.Logger) {
-	srv := &http.Server{Addr: port, Handler: http.HandlerFunc(redirectHTTPports)}
+	srv := &http.Server{Addr: port, Handler: http.HandlerFunc(redirectHTTPport)}
+	log.Info(fmt.Sprintf("Starting listen on port %s", srv.Addr))
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
@@ -57,18 +52,25 @@ func listenSecondaryPort(port string, shutdownCh <-chan struct{}, log *slog.Logg
 		}
 	}()
 
-	<-shutdownCh
+	stopListen(srv, shutdownCh, log)
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	log.Info(fmt.Sprintf("Shutting down server on %s", port))
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Info(fmt.Sprintf("Server on %s shutdown failed: %v", port, err))
-	}
+// stop listen port, then come signal close application
+func stopListen(srv *http.Server, shutdownCh <-chan struct{}, log *slog.Logger) {
+	go func() {
+		<-shutdownCh
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		log.Info(fmt.Sprintf("Shutting down server on %s", srv.Addr))
+		if err := srv.Shutdown(ctx); err != nil {
+			log.Info(fmt.Sprintf("Server on %s shutdown failed: %v", srv.Addr, err))
+		}
+	}()
 }
 
 // redirect to HTTPs
-func redirectHTTPports(w http.ResponseWriter, r *http.Request) {
+func redirectHTTPport(w http.ResponseWriter, r *http.Request) {
 	target := "https://" + r.Host + r.URL.Path
 	http.Redirect(w, r, target, http.StatusMovedPermanently)
 }
